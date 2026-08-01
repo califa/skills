@@ -44,7 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/califa/skills/main/install.sh | bas
 curl -fsSL https://raw.githubusercontent.com/califa/skills/main/install.sh | bash -s -- ux-research
 ```
 
-You can also run the published package directly with `npx @califa/skills`, `npx @califa/skills --all`, or `npx @califa/skills ux-research`.
+You can also run the published package directly with `npx @califaco/skills`, `npx @califaco/skills --all`, or `npx @califaco/skills ux-research`.
 
 ## Automation
 
@@ -52,19 +52,19 @@ The same installer works without prompts:
 
 ```bash
 # Install every bundled skill for every detected harness
-npx @califa/skills --all --yes
+npx @califaco/skills --all --yes
 
 # Name specific skills positionally
-npx @califa/skills ux-research --scope project --yes
+npx @califaco/skills ux-research --scope project --yes
 
 # Or use the equivalent flag form
-npx @califa/skills --skills ux-research --yes
+npx @califaco/skills --skills ux-research --yes
 
 # Preview without changing files
-npx @califa/skills --all --dry-run --yes
+npx @califaco/skills --all --dry-run --yes
 ```
 
-Run `npx @califa/skills --help` for every option.
+Run `npx @califaco/skills --help` for every option.
 
 ## Development
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PACKAGE_SPEC="${CALIFA_SKILLS_PACKAGE_SPEC:-@califa/skills@latest}"
+PACKAGE_SPEC="${CALIFA_SKILLS_PACKAGE_SPEC:-@califaco/skills@latest}"
 
 if ! command -v node >/dev/null 2>&1 || ! command -v npx >/dev/null 2>&1; then
   printf '%s\n' "califa/skills requires Node.js 20 or newer: https://nodejs.org" >&2
