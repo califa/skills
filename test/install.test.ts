@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { lstat, mkdir, readFile, readlink, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, readlink, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import { discoverSkills } from "../src/discovery.js";
 import { getHarness } from "../src/harnesses.js";
@@ -76,6 +76,61 @@ describe("installation", () => {
       assert.match(await readFile(join(existing, "SKILL.md"), "utf8"), /name: review/);
       assert.equal(
         await readFile(join(result.backups[0] as string, "SKILL.md"), "utf8"),
+        "old contents",
+      );
+      // Kept outside the skills folder so harnesses don't load it as a second skill.
+      assert.equal(dirname(result.backups[0] as string), join(home, ".agents", ".califa-skills", "backups"));
+      assert.deepEqual(await readdir(join(home, ".agents", "skills")), ["review"]);
+    } finally {
+      await created.cleanup();
+    }
+  });
+
+  it("links project installs with a relative path", async () => {
+    const { home, cwd, skills } = await setup();
+    const claude = getHarness("claude");
+    if (!claude) throw new Error("Harness fixture missing");
+    const created = await createInstallPlan({
+      skills,
+      harnesses: [claude],
+      scope: "project",
+      strategy: "link",
+      context: { home, cwd },
+    });
+    try {
+      await executeInstallPlan(created.plan, { replace: false });
+      const link = join(cwd, ".claude", "skills", "review");
+      const target = await readlink(link);
+      if (process.platform !== "win32") assert.equal(isAbsolute(target), false);
+      assert.equal(resolve(dirname(link), target), join(cwd, ".agents", "skills", "review"));
+      assert.deepEqual(await readdir(join(cwd, ".claude", "skills")), ["review"]);
+    } finally {
+      await created.cleanup();
+    }
+  });
+
+  it("moves backups older versions left inside a skills folder", async () => {
+    const { home, cwd, skills } = await setup();
+    const codex = getHarness("codex");
+    if (!codex) throw new Error("Harness fixture missing");
+    const legacy = join(home, ".agents", "skills", "review.califa-skills-backup-2026-01-01T00-00-00-000Z");
+    await mkdir(legacy, { recursive: true });
+    await writeFile(join(legacy, "SKILL.md"), "old contents");
+    const created = await createInstallPlan({
+      skills,
+      harnesses: [codex],
+      scope: "user",
+      strategy: "link",
+      context: { home, cwd },
+    });
+    try {
+      await executeInstallPlan(created.plan, { replace: false });
+      assert.deepEqual(await readdir(join(home, ".agents", "skills")), ["review"]);
+      assert.equal(
+        await readFile(
+          join(home, ".agents", ".califa-skills", "backups", "review-2026-01-01T00-00-00-000Z", "SKILL.md"),
+          "utf8",
+        ),
         "old contents",
       );
     } finally {

@@ -1,0 +1,10 @@
+{
+  "name": "califa-skills",
+  "version": "0.2.0",
+  "description": "Califa Agent Skills. UX Research plans and critiques interview scripts, usability tests, and research plans.",
+  "author": { "name": "Califa", "url": "https://califa.co" },
+  "homepage": "https://califa.co/resources/agent-skills",
+  "repository": "https://github.com/califa/skills",
+  "license": "MIT",
+  "keywords": ["ux-research", "user-interviews", "usability-testing"]
+}
