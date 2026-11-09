@@ -14,7 +14,19 @@ The guided flow is deliberately short:
 2. Choose personal or project scope.
 3. Review the detected harnesses and install.
 
-califa/skills writes canonical skills to `.agents/skills`. Harnesses that support the open shared path use it directly. When Claude Code is detected, it receives a directory link to its native `.claude/skills` location. If links are unavailable, califa/skills falls back to a copy. Existing content is never silently deleted: conflicts require confirmation and are renamed to a timestamped `.califa-skills-backup-*` path before replacement.
+califa/skills writes canonical skills to `.agents/skills`. Harnesses that support the open shared path use it directly. When Claude Code is detected, it receives a directory link to its native `.claude/skills` location. Project installs use relative links, so a committed `.claude/skills` link keeps working in other checkouts and CI. If links are unavailable, califa/skills falls back to a copy. Existing content is never silently deleted: conflicts require confirmation and are moved to a timestamped backup in `.califa-skills/backups/` beside the skills folder (never inside it, where agents would load it as a second skill).
+
+## Other ways to install
+
+Claude Code users can install the skills as a plugin and get updates through `/plugin`, with no Node.js needed:
+
+```
+/plugin install califa-skills --marketplace califa/skills
+```
+
+On Claude Code before 2.1.275, add the marketplace first: `/plugin marketplace add califa/skills`, then `/plugin install califa-skills@califa`.
+
+The repository also follows the standard `skills/<name>/SKILL.md` layout, so other skill installers work with it, for example `npx skills add califa/skills`.
 
 ## Supported harnesses
 
@@ -80,3 +92,11 @@ npm run build
 ```
 
 califa/skills requires Node.js 20 or newer.
+
+## Releasing
+
+1. Bump `version` in `package.json` and `.claude-plugin/plugin.json` (the publish workflow checks they match).
+2. Merge to main, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The Publish workflow runs the tests and publishes to npm with a provenance attestation.
+
+The workflow uses npm trusted publishing. Before the first tagged release, add a trusted publisher on npmjs.com (package settings, Trusted publishing: GitHub Actions, repository `califa/skills`, workflow `publish.yml`, environment `npm`).

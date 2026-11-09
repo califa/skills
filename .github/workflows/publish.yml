@@ -1,0 +1,31 @@
+name: Publish
+
+# Publishes to npm when a version tag is pushed (git tag v0.2.0 && git push --tags).
+# Uses npm trusted publishing: no token secret, and the package gets a
+# provenance attestation linking it to this workflow run.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm test
+      - name: Tag matches package.json
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - name: Plugin manifest matches package.json
+        run: test "$(node -p 'require("./.claude-plugin/plugin.json").version')" = "$(node -p 'require("./package.json").version')"
+      - run: npm publish --provenance --access public

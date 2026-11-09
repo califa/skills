@@ -1,0 +1,12 @@
+{
+  "name": "califa",
+  "description": "Agent skills from Califa",
+  "owner": { "name": "Califa", "url": "https://califa.co" },
+  "plugins": [
+    {
+      "name": "califa-skills",
+      "source": "./",
+      "description": "UX Research: plan and critique research plans, interview scripts, and usability tests."
+    }
+  ]
+}

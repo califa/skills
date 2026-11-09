@@ -12,7 +12,7 @@ import {
   symlink,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { canonicalRoot, uniqueInstallRoots } from "./harnesses.js";
 import type {
   Harness,
@@ -163,9 +163,42 @@ export async function createInstallPlan(options: CreatePlanOptions): Promise<{
   };
 }
 
+/**
+ * Backups and in-progress copies live beside the skills folder, never in it.
+ * Harnesses load every directory inside a skills folder, so a backup kept
+ * there would load as a second copy of the same skill.
+ */
+function workRoot(destination: string): string {
+  return join(dirname(dirname(destination)), ".califa-skills");
+}
+
 function backupName(destination: string): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${destination}.califa-skills-backup-${timestamp}`;
+  return join(workRoot(destination), "backups", `${basename(destination)}-${timestamp}`);
+}
+
+/** Moves backups that older versions left inside a skills folder. */
+export async function relocateLegacyBackups(skillsRoot: string): Promise<string[]> {
+  const entries = await readdir(skillsRoot, { withFileTypes: true }).catch(() => []);
+  const moved: string[] = [];
+  for (const entry of entries) {
+    const match = entry.name.match(/^(.+)\.califa-skills-backup-(.+)$/);
+    if (!match) continue;
+    const target = join(workRoot(join(skillsRoot, entry.name)), "backups", `${match[1]}-${match[2]}`);
+    await mkdir(dirname(target), { recursive: true });
+    await rename(join(skillsRoot, entry.name), target);
+    moved.push(target);
+  }
+  return moved;
+}
+
+/**
+ * A relative link survives moving or cloning a project, so a committed
+ * .claude/skills link keeps working. Windows junctions must be absolute.
+ */
+function linkTarget(action: InstallAction): string {
+  if (process.platform === "win32") return action.canonicalDestination;
+  return relative(dirname(action.destination), action.canonicalDestination);
 }
 
 async function installAction(
@@ -179,13 +212,18 @@ async function installAction(
   }
 
   await mkdir(dirname(action.destination), { recursive: true });
-  const incoming = `${action.destination}.califa-skills-incoming-${process.pid}`;
+  await mkdir(join(workRoot(action.destination), "incoming"), { recursive: true });
+  const incoming = join(
+    workRoot(action.destination),
+    "incoming",
+    `${basename(action.destination)}-${process.pid}`,
+  );
   await rm(incoming, { recursive: true, force: true });
   let copyFallback: string | undefined;
   if (action.kind === "link") {
     try {
       await symlink(
-        action.canonicalDestination,
+        linkTarget(action),
         incoming,
         process.platform === "win32" ? "junction" : "dir",
       );
@@ -201,6 +239,7 @@ async function installAction(
   let backup: string | undefined;
   if (state !== "missing") {
     backup = backupName(action.destination);
+    await mkdir(dirname(backup), { recursive: true });
     await rename(action.destination, backup);
   }
   try {
@@ -222,6 +261,8 @@ export async function executeInstallPlan(
   const backups: string[] = [];
   const copyFallbacks: string[] = [];
   const unchangedSet = new Set(plan.unchanged.map((action) => action.destination));
+  const skillsRoots = new Set(plan.actions.map((action) => dirname(action.destination)));
+  for (const root of skillsRoots) await relocateLegacyBackups(root);
 
   for (const action of plan.actions) {
     if (unchangedSet.has(action.destination)) continue;
